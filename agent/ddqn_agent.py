@@ -77,10 +77,26 @@ class DDQNAgent:
         return loss.item()
 
     def save(self, path):
-        torch.save(self.online_net.state_dict(), path)
+        torch.save({
+            "online_net": self.online_net.state_dict(),
+            "optimizer": self.optimizer.state_dict(),
+            "total_steps": self.total_steps,
+            "exploration_step_count": self.exploration.step_count,
+        }, path)
 
     def load(self, path):
-        self.online_net.load_state_dict(torch.load(path, map_location = self.device))
+        checkpoint = torch.load(path, map_location = self.device)
+
+        if "online_net" in checkpoint:
+            self.online_net.load_state_dict(checkpoint["online_net"])
+            self.optimizer.load_state_dict(checkpoint["optimizer"])
+            self.total_steps = checkpoint["total_steps"]
+            self.exploration.step_count = checkpoint["exploration_step_count"]
+        else:
+            # checkpoints saved before resume support only hold raw weights,
+            # so total_steps/epsilon just start fresh from here
+            self.online_net.load_state_dict(checkpoint)
+
         self.target_net.load_state_dict(self.online_net.state_dict())
 
 
